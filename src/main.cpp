@@ -1,6 +1,7 @@
 #include <glad/glad.h>
 
 #include "shader.hpp"
+#include "stb_image.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 
@@ -18,16 +19,30 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 // float trig_vertices[] = {-0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.0f, 0.5f, 0.0f};
+// float trig_vertices[] = {
+//     // positions         // colors
+//     0.5f,  -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom right
+//     -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // bottom left
+//     0.0f,  0.5f,  0.0f, 0.0f, 0.0f, 1.0f  // top
+// };
 float trig_vertices[] = {
-    // positions         // colors
-    0.5f,  -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom right
-    -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // bottom left
-    0.0f,  0.5f,  0.0f, 0.0f, 0.0f, 1.0f  // top
+    // positions          // colors           // texture coords
+     0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+     0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+    -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+    -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
 };
-unsigned int indices[] = {0, 1, 2};
+unsigned int indices[] = {0, 1, 2, 2, 3, 0};
+// float texCords[] = {
+//     0.0f, 0.0f, // lower-left corner
+//     1.0f, 0.0f, // lower-right corner
+//     0.5f, 1.0f  // top-center corner
+// };
 GLuint VBO, VAO, EBO;
-std::unique_ptr<Shader> mainShader; 
+std::unique_ptr<Shader> mainShader;
 GLuint vertexShader, fragmentShader;
+GLuint texture1;
+GLuint texture2;
 int main() {
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -63,16 +78,52 @@ int main() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), nullptr);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), nullptr);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void *)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+
+    glGenTextures(1, &texture1);
+    glGenTextures(1, &texture2);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    int imwidth, imheight, imnrChannels;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char *data = stbi_load("container.jpg", &imwidth, &imheight, &imnrChannels, 0);
+    if (data) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imwidth, imheight, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        stbi_image_free(data);
+    } else {
+        std::cerr << "Failed to load container.jpg" << std::endl;
+    }
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, texture2);
+    data = stbi_load("awesomeface.png", &imwidth, &imheight, &imnrChannels, 0);
+    if (data) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imwidth, imheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        stbi_image_free(data);
+    } else {
+        std::cerr << "Failed to load awesomeface.png" << std::endl;
+    }
+
     glfwSwapInterval(1);
     glfwSetWindowRefreshCallback(window, draw);
     glfwSetWindowPosCallback(window, window_move_callback);
+    mainShader->use();
+    mainShader->setInt("texture1", 0);
+    mainShader->setInt("texture2", 1);
 
     while (!glfwWindowShouldClose(window)) {
 
@@ -110,13 +161,16 @@ void draw(GLFWwindow *window) {
     glClear(GL_COLOR_BUFFER_BIT);
 
     float timeValue = glfwGetTime();
-    float greenValue = 2*((sin(timeValue) / 2.0f) + 0.5f);
-    // int vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
-    // glUseProgram(shaderProgram);
-    // glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
-    // glUseProgram(shaderProgram);
-    mainShader->setFloat("scale", greenValue);
+    float colorMul = (sin(timeValue) + 2.0f) / 2.0;
+    mainShader->setFloat("colorMul", colorMul);
+    float scale = cos(timeValue/1.3) * 0.75 + 1.25;
+    mainShader->setFloat("scale", scale);
+    mainShader->setFloat("mixVal", sin(timeValue)/2.0 + 0.5);
     mainShader->use();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture1);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, texture2);
     glBindVertexArray(VAO);
     // glDrawArrays(GL_TRIANGLES, 0, 3);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

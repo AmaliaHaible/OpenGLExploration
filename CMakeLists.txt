@@ -14,6 +14,7 @@ include_directories("${PROJECT_SOURCE_DIR}/src/glad/src")
 add_executable(main 
     "${PROJECT_SOURCE_DIR}/src/glad/src/glad.c"
     "${PROJECT_SOURCE_DIR}/src/main.cpp"
+    "${PROJECT_SOURCE_DIR}/src/stb_image.cpp"
 )
 if (MSVC)
     target_compile_options(main PRIVATE /W4)
@@ -43,6 +44,18 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${PROJECT_SOURCE_DIR}/src/fragment.glsl"
             "$<TARGET_FILE_DIR:main>/fragment.glsl"
+)
+add_custom_command(
+    TARGET main POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${PROJECT_SOURCE_DIR}/assets/container.jpg"
+            "$<TARGET_FILE_DIR:main>/container.jpg"
+)
+add_custom_command(
+    TARGET main POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${PROJECT_SOURCE_DIR}/assets/awesomeface.png"
+            "$<TARGET_FILE_DIR:main>/awesomeface.png"
 )
 
 # target_link_options(main PRIVATE -mwindows)
