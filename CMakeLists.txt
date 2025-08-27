@@ -15,12 +15,35 @@ add_executable(main
     "${PROJECT_SOURCE_DIR}/src/glad/src/glad.c"
     "${PROJECT_SOURCE_DIR}/src/main.cpp"
 )
-# target_compile_options(main PRIVATE -Wall -Wextra -Wpedantic)
 if (MSVC)
     target_compile_options(main PRIVATE /W4)
 else()
+    message("Note: I only really tested it with MSVC since i use raddbg")
     target_compile_options(main PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+#
+# configure_file(
+#     "${PROJECT_SOURCE_DIR}/src/vertex.glsl"
+#     "vertex.glsl"
+#     COPYONLY
+# )
+# configure_file(
+#     "${PROJECT_SOURCE_DIR}/src/fragment.glsl"
+#     "fragment.glsl"
+#     COPYONLY
+# )
+add_custom_command(
+    TARGET main POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${PROJECT_SOURCE_DIR}/src/vertex.glsl"
+            "$<TARGET_FILE_DIR:main>/vertex.glsl"
+)
+add_custom_command(
+    TARGET main POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${PROJECT_SOURCE_DIR}/src/fragment.glsl"
+            "$<TARGET_FILE_DIR:main>/fragment.glsl"
+)
 
 # target_link_options(main PRIVATE -mwindows)
 target_link_libraries(main PRIVATE glfw)
