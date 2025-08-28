@@ -1,10 +1,17 @@
 #include <glad/glad.h>
 
-#include "glm/ext/matrix_transform.hpp"
+#include "glm/ext/quaternion_geometric.hpp"
 #include "shader.hpp"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 
+#include "glm/common.hpp"
+#include "glm/ext/matrix_clip_space.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/ext/vector_float3.hpp"
+#include "glm/geometric.hpp"
+#include "glm/trigonometric.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -17,11 +24,10 @@
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 void window_move_callback(GLFWwindow *window, int xpos, int ypos);
+void mouse_callback(GLFWwindow *window, double xpos, double ypos);
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 void draw(GLFWwindow *window);
-
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
 
 // float trig_vertices[] = {-0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.0f, 0.5f, 0.0f};
 // float trig_vertices[] = {
@@ -30,20 +36,58 @@ const unsigned int SCR_HEIGHT = 600;
 //     -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // bottom left
 //     0.0f,  0.5f,  0.0f, 0.0f, 0.0f, 1.0f  // top
 // };
-float trig_vertices[] = {
-    // positions          // texture coords
-    0.5f,  0.5f,  0.0f, 1.0f, 1.0f, // top right
-    0.5f,  -0.5f, 0.0f, 1.0f, 0.0f, // bottom right
-    -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, // bottom left
-    -0.5f, 0.5f,  0.0f, 0.0f, 1.0f  // top left
-};
-unsigned int indices[] = {0, 1, 3, 1, 2, 3};
+// float trig_vertices[] = {
+//     // positions          // texture coords
+//     0.5f,  0.5f,  0.0f, 1.0f, 1.0f, // top right
+//     0.5f,  -0.5f, 0.0f, 1.0f, 0.0f, // bottom right
+//     -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, // bottom left
+//     -0.5f, 0.5f,  0.0f, 0.0f, 1.0f  // top left
+// };
+// unsigned int indices[] = {0, 1, 3, 1, 2, 3};
+float cube_vertices[] = {-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.5f,  -0.5f, -0.5f, 1.0f, 0.0f, 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f,
+                         0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, -0.5f, 0.5f,  -0.5f, 0.0f, 1.0f, -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
+
+                         -0.5f, -0.5f, 0.5f,  0.0f, 0.0f, 0.5f,  -0.5f, 0.5f,  1.0f, 0.0f, 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+                         0.5f,  0.5f,  0.5f,  1.0f, 1.0f, -0.5f, 0.5f,  0.5f,  0.0f, 1.0f, -0.5f, -0.5f, 0.5f,  0.0f, 0.0f,
+
+                         -0.5f, 0.5f,  0.5f,  1.0f, 0.0f, -0.5f, 0.5f,  -0.5f, 1.0f, 1.0f, -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
+                         -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, -0.5f, -0.5f, 0.5f,  0.0f, 0.0f, -0.5f, 0.5f,  0.5f,  1.0f, 0.0f,
+
+                         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, 0.5f,  -0.5f, -0.5f, 0.0f, 1.0f,
+                         0.5f,  -0.5f, -0.5f, 0.0f, 1.0f, 0.5f,  -0.5f, 0.5f,  0.0f, 0.0f, 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+                         -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.5f,  -0.5f, -0.5f, 1.0f, 1.0f, 0.5f,  -0.5f, 0.5f,  1.0f, 0.0f,
+                         0.5f,  -0.5f, 0.5f,  1.0f, 0.0f, -0.5f, -0.5f, 0.5f,  0.0f, 0.0f, -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
+
+                         -0.5f, 0.5f,  -0.5f, 0.0f, 1.0f, 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+                         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, -0.5f, 0.5f,  0.5f,  0.0f, 0.0f, -0.5f, 0.5f,  -0.5f, 0.0f, 1.0f};
+glm::vec3 cubePositions[] = {glm::vec3(0.0f, 0.0f, 0.0f),   glm::vec3(2.0f, 5.0f, -15.0f), glm::vec3(-1.5f, -2.2f, -2.5f), glm::vec3(-3.8f, -2.0f, -12.3f),
+                             glm::vec3(2.4f, -0.4f, -3.5f), glm::vec3(-1.7f, 3.0f, -7.5f), glm::vec3(1.3f, -2.0f, -2.5f),  glm::vec3(1.5f, 2.0f, -2.5f),
+                             glm::vec3(1.5f, 0.2f, -1.5f),  glm::vec3(-1.3f, 1.0f, -1.5f)};
+
+unsigned int SCR_WIDTH = 800;
+unsigned int SCR_HEIGHT = 600;
+float CAM_MOV_SPEED = 10.0f;
+float CAM_ROT_SPEED = 2.0f;
+
 GLuint VBO, VAO, EBO;
 std::unique_ptr<Shader> mainShader;
 GLuint vertexShader, fragmentShader;
 GLuint texture1;
 GLuint texture2;
-glm::mat4 trans;
+
+glm::mat4 projection;
+
+glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+float yaw = -90, pitch = 0;
+float fov = 75.0f;
+
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+float lastMouseX = SCR_WIDTH / 2.0, lastMouseY = SCR_HEIGHT / 2.0;
+
 int main() {
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -65,8 +109,12 @@ int main() {
     }
 
     glViewport(0, 0, 800, 600);
+    glEnable(GL_DEPTH_TEST);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetKeyCallback(window, key_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     mainShader = std::make_unique<Shader>("vertex.glsl", "fragment.glsl");
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -74,10 +122,12 @@ int main() {
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(trig_vertices), trig_vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
+    // glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // glBufferData(GL_ARRAY_BUFFER, sizeof(trig_vertices), trig_vertices, GL_STATIC_DRAW);
+    //
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr);
     glEnableVertexAttribArray(0);
@@ -124,7 +174,13 @@ int main() {
     mainShader->setInt("texture1", 0);
     mainShader->setInt("texture2", 1);
 
+    projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+
     while (!glfwWindowShouldClose(window)) {
+
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
 
         processInput(window);
         draw(window);
@@ -141,42 +197,87 @@ int main() {
 }
 
 void processInput(GLFWwindow *window) {
-    // static bool using_wireframe = 0;
-    // if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-    //     glfwSetWindowShouldClose(window, true);
-    // } else if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS) {
-    //     if (using_wireframe) {
-    //         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    //         using_wireframe = false;
-    //     } else {
-    //         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    //         using_wireframe = true;
-    //     }
-    // }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * CAM_MOV_SPEED * deltaTime;
+    } else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * CAM_MOV_SPEED * deltaTime;
+    } else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+        cameraPos += cameraFront * CAM_MOV_SPEED * deltaTime;
+    } else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        cameraPos -= cameraFront * CAM_MOV_SPEED * deltaTime;
+    } else if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+        cameraPos += cameraUp * CAM_MOV_SPEED * deltaTime;
+    } else if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+        cameraPos -= cameraUp * CAM_MOV_SPEED * deltaTime;
+    }
 }
 
 void draw(GLFWwindow *window) {
     glClearColor(0.2, 0.3, 0.3, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     float timeValue = glfwGetTime();
-    float scale = cos(timeValue / 1.3) * 0.75 + 1.25;
-    mainShader->setFloat("scale", scale);
-    mainShader->setFloat("mixVal", sin(timeValue) / 2.0 + 0.5);
+    mainShader->setFloat("scale", 1);
+    mainShader->setFloat("mixVal", cos(timeValue) / 2.0 + 0.5);
     mainShader->use();
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture1);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, texture2);
-    glm::mat4 transform = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
-    transform = glm::rotate(transform, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
-    transform = glm::translate(transform, glm::vec3(0.3f, -0.3f, 0.0f));
+
     mainShader->use();
-    mainShader->setMat4("transform", transform);
+    glm::mat4 view;
+    view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+    mainShader->setMat4("view", view);
+    mainShader->setMat4("projection", projection);
     glBindVertexArray(VAO);
-    // glDrawArrays(GL_TRIANGLES, 0, 3);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    for (unsigned int i = 0; i < 10; i++) {
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, cubePositions[i]);
+        float angle = 20.0f * i + (float)glfwGetTime() * 50.0f;
+        model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+        mainShader->setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+    }
+    // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glfwSwapBuffers(window);
+}
+
+void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
+    static bool firstMouse = true;
+    if (firstMouse) {
+        lastMouseX = xpos;
+        lastMouseY = ypos;
+        firstMouse = false;
+    }
+    float xoffset = xpos - lastMouseX;
+    float yoffset = lastMouseY - ypos; // reversed since y-coordinates range from bottom to top
+    lastMouseX = xpos;
+    lastMouseY = ypos;
+
+    const float sensitivity = 0.1f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+    yaw += xoffset;
+    pitch += yoffset;
+    if (pitch > 89.0f)
+        pitch = 89.0f;
+    if (pitch < -89.0f)
+        pitch = -89.0f;
+    glm::vec3 direction;
+    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    direction.y = sin(glm::radians(pitch));
+    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    cameraFront = glm::normalize(direction);
+}
+
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
+    fov -= (float)yoffset;
+    if (fov < 1.0f)
+        fov = 1.0f;
+    if (fov > 120.0f)
+        fov = 120.0f;
+    projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 }
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
@@ -197,6 +298,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 void window_move_callback(GLFWwindow *window, int xpos, int ypos) { draw(window); }
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+    SCR_WIDTH = width;
+    SCR_HEIGHT = height;
+    projection = glm::perspective(glm::radians(fov), (float)width / (float)height, 0.1f, 100.0f);
     // std::cout << __FILE_NAME__ << ":" << __LINE__ << ":Resize " << window << " " << width << " " << height << std::endl;
     glViewport(0, 0, width, height);
 }
