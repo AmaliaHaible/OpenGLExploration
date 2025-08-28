@@ -172,8 +172,7 @@ void draw(GLFWwindow *window) {
     transform = glm::rotate(transform, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
     transform = glm::translate(transform, glm::vec3(0.3f, -0.3f, 0.0f));
     mainShader->use();
-    unsigned int transformLoc = glGetUniformLocation(mainShader->ID, "transform");
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
+    mainShader->setMat4("transform", transform);
     glBindVertexArray(VAO);
     // glDrawArrays(GL_TRIANGLES, 0, 3);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
