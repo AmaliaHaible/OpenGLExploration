@@ -12,11 +12,21 @@ include_directories("${PROJECT_SOURCE_DIR}/src/glad/include")
 include_directories("${PROJECT_SOURCE_DIR}/src/glad/src")
 # include_directories("${PROJECT_SOURCE_DIR}/src/glm-0.9.8.5")
 include_directories("${PROJECT_SOURCE_DIR}/src/glm-1.0.1")
+include_directories("${PROJECT_SOURCE_DIR}/src/imgui-docking")
+include_directories("${PROJECT_SOURCE_DIR}/src/imgui-docking/backends")
 
 add_executable(main 
     "${PROJECT_SOURCE_DIR}/src/glad/src/glad.c"
     "${PROJECT_SOURCE_DIR}/src/main.cpp"
     "${PROJECT_SOURCE_DIR}/src/stb_image.cpp"
+
+    "${PROJECT_SOURCE_DIR}/src/imgui-docking/imgui.cpp"
+    "${PROJECT_SOURCE_DIR}/src/imgui-docking/imgui_demo.cpp"
+    "${PROJECT_SOURCE_DIR}/src/imgui-docking/imgui_draw.cpp"
+    "${PROJECT_SOURCE_DIR}/src/imgui-docking/imgui_tables.cpp"
+    "${PROJECT_SOURCE_DIR}/src/imgui-docking/imgui_widgets.cpp"
+    "${PROJECT_SOURCE_DIR}/src/imgui-docking/backends/imgui_impl_glfw.cpp"
+    "${PROJECT_SOURCE_DIR}/src/imgui-docking/backends/imgui_impl_opengl3.cpp"
 )
 if (MSVC)
     target_compile_options(main PRIVATE /W4)

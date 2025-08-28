@@ -21,6 +21,10 @@
 #include <math.h>
 #include <memory>
 
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 void window_move_callback(GLFWwindow *window, int xpos, int ypos);
@@ -68,7 +72,7 @@ glm::vec3 cubePositions[] = {glm::vec3(0.0f, 0.0f, 0.0f),   glm::vec3(2.0f, 5.0f
 unsigned int SCR_WIDTH = 800;
 unsigned int SCR_HEIGHT = 600;
 float CAM_MOV_SPEED = 10.0f;
-float CAM_ROT_SPEED = 2.0f;
+float CAM_ROT_SPEED = 50.0f;
 
 GLuint VBO, VAO, EBO;
 std::unique_ptr<Shader> mainShader;
@@ -112,9 +116,9 @@ int main() {
     glEnable(GL_DEPTH_TEST);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetKeyCallback(window, key_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
+    // glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     mainShader = std::make_unique<Shader>("vertex.glsl", "fragment.glsl");
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -176,7 +180,19 @@ int main() {
 
     projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // IF using Docking Branch
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window, true); // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+    ImGui_ImplOpenGL3_Init();
+
     while (!glfwWindowShouldClose(window)) {
+        glfwWaitEventsTimeout(1.0 / 60.0);
 
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
@@ -185,18 +201,22 @@ int main() {
         processInput(window);
         draw(window);
         // glfwPollEvents();
-        glfwWaitEventsTimeout(1.0 / 60.0);
     }
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     // glDeleteProgram(shaderProgram);
 
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
     glfwTerminate();
     return 0;
 }
 
 void processInput(GLFWwindow *window) {
+    bool update_rot = false;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
         cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * CAM_MOV_SPEED * deltaTime;
     } else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
@@ -209,10 +229,37 @@ void processInput(GLFWwindow *window) {
         cameraPos += cameraUp * CAM_MOV_SPEED * deltaTime;
     } else if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
         cameraPos -= cameraUp * CAM_MOV_SPEED * deltaTime;
+    } else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+        yaw -= CAM_ROT_SPEED * deltaTime;
+        update_rot = true;
+    } else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+        yaw += CAM_ROT_SPEED * deltaTime;
+        update_rot = true;
+    } else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+        pitch += CAM_ROT_SPEED * deltaTime;
+        update_rot = true;
+    } else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+        pitch -= CAM_ROT_SPEED * deltaTime;
+        update_rot = true;
+    }
+    if (update_rot) {
+        if (pitch > 89.0f)
+            pitch = 89.0f;
+        if (pitch < -89.0f)
+            pitch = -89.0f;
+        glm::vec3 direction;
+        direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+        direction.y = sin(glm::radians(pitch));
+        direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        cameraFront = glm::normalize(direction);
     }
 }
 
 void draw(GLFWwindow *window) {
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    ImGui::ShowDemoWindow(); // Show demo window! :)
     glClearColor(0.2, 0.3, 0.3, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -240,6 +287,8 @@ void draw(GLFWwindow *window) {
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
     // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     glfwSwapBuffers(window);
 }
 
