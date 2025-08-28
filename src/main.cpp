@@ -1,10 +1,15 @@
 #include <glad/glad.h>
 
+#include "glm/ext/matrix_transform.hpp"
 #include "shader.hpp"
-#include "stb_image.h"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include "stb_image.h"
 #include <iostream>
 #include <math.h>
 #include <memory>
@@ -26,23 +31,19 @@ const unsigned int SCR_HEIGHT = 600;
 //     0.0f,  0.5f,  0.0f, 0.0f, 0.0f, 1.0f  // top
 // };
 float trig_vertices[] = {
-    // positions          // colors           // texture coords
-     0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-     0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-    -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-    -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
+    // positions          // texture coords
+    0.5f,  0.5f,  0.0f, 1.0f, 1.0f, // top right
+    0.5f,  -0.5f, 0.0f, 1.0f, 0.0f, // bottom right
+    -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, // bottom left
+    -0.5f, 0.5f,  0.0f, 0.0f, 1.0f  // top left
 };
-unsigned int indices[] = {0, 1, 2, 2, 3, 0};
-// float texCords[] = {
-//     0.0f, 0.0f, // lower-left corner
-//     1.0f, 0.0f, // lower-right corner
-//     0.5f, 1.0f  // top-center corner
-// };
+unsigned int indices[] = {0, 1, 3, 1, 2, 3};
 GLuint VBO, VAO, EBO;
 std::unique_ptr<Shader> mainShader;
 GLuint vertexShader, fragmentShader;
 GLuint texture1;
 GLuint texture2;
+glm::mat4 trans;
 int main() {
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -78,12 +79,10 @@ int main() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), nullptr);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -161,16 +160,20 @@ void draw(GLFWwindow *window) {
     glClear(GL_COLOR_BUFFER_BIT);
 
     float timeValue = glfwGetTime();
-    float colorMul = (sin(timeValue) + 2.0f) / 2.0;
-    mainShader->setFloat("colorMul", colorMul);
-    float scale = cos(timeValue/1.3) * 0.75 + 1.25;
+    float scale = cos(timeValue / 1.3) * 0.75 + 1.25;
     mainShader->setFloat("scale", scale);
-    mainShader->setFloat("mixVal", sin(timeValue)/2.0 + 0.5);
+    mainShader->setFloat("mixVal", sin(timeValue) / 2.0 + 0.5);
     mainShader->use();
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture1);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, texture2);
+    glm::mat4 transform = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+    transform = glm::rotate(transform, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+    transform = glm::translate(transform, glm::vec3(0.3f, -0.3f, 0.0f));
+    mainShader->use();
+    unsigned int transformLoc = glGetUniformLocation(mainShader->ID, "transform");
+    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
     glBindVertexArray(VAO);
     // glDrawArrays(GL_TRIANGLES, 0, 3);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

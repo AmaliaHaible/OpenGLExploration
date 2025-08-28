@@ -10,6 +10,8 @@ add_subdirectory("${PROJECT_SOURCE_DIR}/src/glfw-3.4")
 include_directories("${PROJECT_SOURCE_DIR}/src")
 include_directories("${PROJECT_SOURCE_DIR}/src/glad/include")
 include_directories("${PROJECT_SOURCE_DIR}/src/glad/src")
+# include_directories("${PROJECT_SOURCE_DIR}/src/glm-0.9.8.5")
+include_directories("${PROJECT_SOURCE_DIR}/src/glm-1.0.1")
 
 add_executable(main 
     "${PROJECT_SOURCE_DIR}/src/glad/src/glad.c"
