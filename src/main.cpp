@@ -1,6 +1,5 @@
 #include <glad/glad.h>
 
-#include "glm/ext/quaternion_geometric.hpp"
 #include "shader.hpp"
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
@@ -9,6 +8,7 @@
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/matrix_transform.hpp"
+#include "glm/ext/quaternion_geometric.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include "glm/geometric.hpp"
 #include "glm/trigonometric.hpp"
@@ -25,13 +25,15 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
-void window_move_callback(GLFWwindow *window, int xpos, int ypos);
-void mouse_callback(GLFWwindow *window, double xpos, double ypos);
-void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
+void callback_framebuffer_size(GLFWwindow *window, int width, int height);
+void callback_key(GLFWwindow *window, int key, int scancode, int action, int mods);
+void callback_window_move(GLFWwindow *window, int xpos, int ypos);
+void callback_mouse(GLFWwindow *window, double xpos, double ypos);
+void callback_scroll(GLFWwindow *window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 void draw(GLFWwindow *window);
+void drawImgui();
+void updateCamera();
 
 // float trig_vertices[] = {-0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.0f, 0.5f, 0.0f};
 // float trig_vertices[] = {
@@ -114,10 +116,10 @@ int main() {
 
     glViewport(0, 0, 800, 600);
     glEnable(GL_DEPTH_TEST);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetKeyCallback(window, key_callback);
+    glfwSetFramebufferSizeCallback(window, callback_framebuffer_size);
+    glfwSetKeyCallback(window, callback_key);
     // glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetScrollCallback(window, callback_scroll);
     // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     mainShader = std::make_unique<Shader>("vertex.glsl", "fragment.glsl");
     glGenVertexArrays(1, &VAO);
@@ -173,7 +175,7 @@ int main() {
 
     glfwSwapInterval(1);
     glfwSetWindowRefreshCallback(window, draw);
-    glfwSetWindowPosCallback(window, window_move_callback);
+    glfwSetWindowPosCallback(window, callback_window_move);
     mainShader->use();
     mainShader->setInt("texture1", 0);
     mainShader->setInt("texture2", 1);
@@ -217,41 +219,44 @@ int main() {
 
 void processInput(GLFWwindow *window) {
     bool update_rot = false;
+    // -----Movement------
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
         cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * CAM_MOV_SPEED * deltaTime;
-    } else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * CAM_MOV_SPEED * deltaTime;
-    } else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+    }
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
         cameraPos += cameraFront * CAM_MOV_SPEED * deltaTime;
-    } else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
         cameraPos -= cameraFront * CAM_MOV_SPEED * deltaTime;
-    } else if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+    }
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
         cameraPos += cameraUp * CAM_MOV_SPEED * deltaTime;
-    } else if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+    }
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
         cameraPos -= cameraUp * CAM_MOV_SPEED * deltaTime;
-    } else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+    }
+    // -----Rotation------
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
         yaw -= CAM_ROT_SPEED * deltaTime;
         update_rot = true;
-    } else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
         yaw += CAM_ROT_SPEED * deltaTime;
         update_rot = true;
-    } else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+    }
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
         pitch += CAM_ROT_SPEED * deltaTime;
         update_rot = true;
-    } else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
         pitch -= CAM_ROT_SPEED * deltaTime;
         update_rot = true;
     }
     if (update_rot) {
-        if (pitch > 89.0f)
-            pitch = 89.0f;
-        if (pitch < -89.0f)
-            pitch = -89.0f;
-        glm::vec3 direction;
-        direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-        direction.y = sin(glm::radians(pitch));
-        direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-        cameraFront = glm::normalize(direction);
+        updateCamera();
     }
 }
 
@@ -259,7 +264,8 @@ void draw(GLFWwindow *window) {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-    ImGui::ShowDemoWindow(); // Show demo window! :)
+    // ImGui::ShowDemoWindow(); // Show demo window! :)
+    drawImgui();
     glClearColor(0.2, 0.3, 0.3, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -292,7 +298,31 @@ void draw(GLFWwindow *window) {
     glfwSwapBuffers(window);
 }
 
-void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
+void drawImgui() {
+    if (ImGui::CollapsingHeader("Camera")) {
+        if (ImGui::SliderFloat("FOV", &fov, 10.0f, 150.0f, "%.1f"))
+            projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        if (ImGui::SliderFloat("Pitch", &pitch, -89.0, 89.0, "%.1f", ImGuiSliderFlags_ClampOnInput) + ImGui::SliderFloat("Yaw", &yaw, -180.0f, 180.0f, "%.1f"))
+            updateCamera();
+
+        // ImGui::TreePop();
+        // ImGui::Spacing();
+    }
+}
+
+void updateCamera() {
+    if (pitch > 89.0f)
+        pitch = 89.0f;
+    if (pitch < -89.0f)
+        pitch = -89.0f;
+    glm::vec3 direction;
+    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    direction.y = sin(glm::radians(pitch));
+    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    cameraFront = glm::normalize(direction);
+}
+
+void callback_mouse(GLFWwindow *window, double xpos, double ypos) {
     static bool firstMouse = true;
     if (firstMouse) {
         lastMouseX = xpos;
@@ -320,7 +350,7 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
     cameraFront = glm::normalize(direction);
 }
 
-void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
+void callback_scroll(GLFWwindow *window, double xoffset, double yoffset) {
     fov -= (float)yoffset;
     if (fov < 1.0f)
         fov = 1.0f;
@@ -329,7 +359,7 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
     projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 }
 
-void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+void callback_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
     static bool using_wireframe = 0;
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, 1);
@@ -344,9 +374,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
     }
 }
 
-void window_move_callback(GLFWwindow *window, int xpos, int ypos) { draw(window); }
+void callback_window_move(GLFWwindow *window, int xpos, int ypos) { draw(window); }
 
-void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+void callback_framebuffer_size(GLFWwindow *window, int width, int height) {
     SCR_WIDTH = width;
     SCR_HEIGHT = height;
     projection = glm::perspective(glm::radians(fov), (float)width / (float)height, 0.1f, 100.0f);
