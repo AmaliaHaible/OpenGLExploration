@@ -121,7 +121,7 @@ int main() {
     // glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, callback_scroll);
     // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    mainShader = std::make_unique<Shader>("vertex.glsl", "fragment.glsl");
+    mainShader = std::make_unique<Shader>("shaders/vertex.glsl", "shaders/fragment.glsl");
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
@@ -154,7 +154,7 @@ int main() {
 
     int imwidth, imheight, imnrChannels;
     stbi_set_flip_vertically_on_load(true);
-    unsigned char *data = stbi_load("container.jpg", &imwidth, &imheight, &imnrChannels, 0);
+    unsigned char *data = stbi_load("assets/container.jpg", &imwidth, &imheight, &imnrChannels, 0);
     if (data) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imwidth, imheight, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -164,7 +164,7 @@ int main() {
     }
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, texture2);
-    data = stbi_load("awesomeface.png", &imwidth, &imheight, &imnrChannels, 0);
+    data = stbi_load("assets/awesomeface.png", &imwidth, &imheight, &imnrChannels, 0);
     if (data) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imwidth, imheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);

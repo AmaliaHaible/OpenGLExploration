@@ -34,40 +34,18 @@ else()
     message("Note: I only really tested it with MSVC since i use raddbg")
     target_compile_options(main PRIVATE -Wall -Wextra -Wpedantic)
 endif()
-#
-# configure_file(
-#     "${PROJECT_SOURCE_DIR}/src/vertex.glsl"
-#     "vertex.glsl"
-#     COPYONLY
-# )
-# configure_file(
-#     "${PROJECT_SOURCE_DIR}/src/fragment.glsl"
-#     "fragment.glsl"
-#     COPYONLY
-# )
+
 add_custom_command(
     TARGET main POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${PROJECT_SOURCE_DIR}/src/vertex.glsl"
-            "$<TARGET_FILE_DIR:main>/vertex.glsl"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${PROJECT_SOURCE_DIR}/src/shaders"
+    "$<TARGET_FILE_DIR:main>/shaders"
 )
 add_custom_command(
     TARGET main POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${PROJECT_SOURCE_DIR}/src/fragment.glsl"
-            "$<TARGET_FILE_DIR:main>/fragment.glsl"
-)
-add_custom_command(
-    TARGET main POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${PROJECT_SOURCE_DIR}/assets/container.jpg"
-            "$<TARGET_FILE_DIR:main>/container.jpg"
-)
-add_custom_command(
-    TARGET main POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${PROJECT_SOURCE_DIR}/assets/awesomeface.png"
-            "$<TARGET_FILE_DIR:main>/awesomeface.png"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${PROJECT_SOURCE_DIR}/assets"
+    "$<TARGET_FILE_DIR:main>/assets"
 )
 
 # target_link_options(main PRIVATE -mwindows)
