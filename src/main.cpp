@@ -41,6 +41,7 @@ void updateCamera();
 void initRandom(std::optional<unsigned> seed = std::nullopt);
 float randomFloat(float a, float b);
 void initCubes(int count);
+void drawImguiMaterialButtons();
 
 float vertices[] = {-0.5f, -0.5f, -0.5f, 0.0f,  0.0f,  -1.0f, 0.5f,  -0.5f, -0.5f, 0.0f,  0.0f,  -1.0f, 0.5f,  0.5f,  -0.5f, 0.0f,  0.0f,  -1.0f, 0.5f,  0.5f,
                     -0.5f, 0.0f,  0.0f,  -1.0f, -0.5f, 0.5f,  -0.5f, 0.0f,  0.0f,  -1.0f, -0.5f, -0.5f, -0.5f, 0.0f,  0.0f,  -1.0f, -0.5f, -0.5f, 0.5f,  0.0f,
@@ -78,7 +79,7 @@ std::mt19937 gen;
 // imgui settings
 bool movingLight = true;
 glm::vec3 materialAmbient(1.0f, 0.5f, 0.31f);
-glm::vec3 materialDiffuse(1.0f, 1.0f, 0.31f);
+glm::vec3 materialDiffuse(1.0f, 0.5f, 0.31f);
 glm::vec3 materialSpecular(0.5f, 0.5f, 0.5f);
 float materialShininess = 32.0f;
 
@@ -188,7 +189,6 @@ void draw(GLFWwindow *window) {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    float time = glfwGetTime();
     // be sure to activate shader when setting uniforms/drawing objects
     mainShader->use();
     mainShader->setVec3("viewPos", camera.Position);
@@ -242,28 +242,26 @@ void draw(GLFWwindow *window) {
 }
 
 void drawImgui() {
-    if (ImGui::CollapsingHeader("Settings")) {
-        // ImGui::SliderFloat("ambientStrength", &ambientStrength, 0.0f, 2.0f);
-        // ImGui::SliderFloat("specularStrength", &specularStrength, 0.0f, 200.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-        ImGui::Checkbox("Move Light", &movingLight);
-        ImGui::SliderFloat3("lightPosition", &lightPosition.x, -5.0f, 5.0f);
-        if (ImGui::SliderFloat3("lightBaseColor", &lightBaseColor.x, 0.0f, 1.0f)) {
+    if (ImGui::CollapsingHeader("Light")) {
+        ImGui::SliderFloat3("Position", &lightPosition.x, -5.0f, 5.0f);
+        if (ImGui::ColorEdit3("BaseColor", &lightBaseColor.x)) {
             lightAmbient = lightBaseColor * glm::vec3(0.5);
             lightDiffuse = lightBaseColor * glm::vec3(0.1);
         };
-        ImGui::SliderFloat3("lightAmbient", &lightAmbient.x, 0.0f, 1.0f);
-        ImGui::SliderFloat3("lightDiffuse", &lightDiffuse.x, 0.0f, 1.0f);
-        ImGui::SliderFloat3("lightSpecular", &lightSpecular.x, 0.0f, 1.0f);
-
-        ImGui::SliderFloat3("materialAmbient", &materialAmbient.x, 0.0f, 1.0f);
-        ImGui::SliderFloat3("materialDiffuse", &materialDiffuse.x, 0.0f, 1.0f);
-        ImGui::SliderFloat3("materialSpecular", &materialSpecular.x, 0.0f, 1.0f);
-        ImGui::SliderFloat("materialShininess", &materialShininess, 0.0f, 256.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+        ImGui::ColorEdit3("Ambient", &lightAmbient.x);
+        ImGui::ColorEdit3("Diffuse", &lightDiffuse.x);
+        ImGui::ColorEdit3("Specular", &lightSpecular.x);
+    }
+    if (ImGui::CollapsingHeader("Material")) {
+        ImGui::ColorEdit3("Ambient##2", &materialAmbient.x);
+        ImGui::ColorEdit3("Diffuse##2", &materialDiffuse.x);
+        ImGui::ColorEdit3("Specular##2", &materialSpecular.x);
+        ImGui::SliderFloat("Shininess", &materialShininess, 0.0f, 256.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+        drawImguiMaterialButtons();
     }
 }
 
 void processInput(GLFWwindow *window) {
-    bool update_rot = false;
     // -----Movement------
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
         camera.ProcessKeyboard(LEFT, deltaTime);
@@ -317,6 +315,272 @@ float randomFloat(float a, float b) {
 void initCubes(int count) {
     while (count--) {
         cubes.push_back(glm::vec3(randomFloat(-10.0, 10.0), randomFloat(-5.0, 5.0), -randomFloat(2.0, 10.0)));
+    }
+}
+
+void drawImguiMaterialButtons() {
+    // This is a really ugly function (in case you couldnt tell)
+    float window_visible_x2 = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;
+    ImGuiStyle &style = ImGui::GetStyle();
+    ImVec2 button_sz(100, 30);
+    if (ImGui::Button("Emerald", button_sz)) {
+        materialAmbient = glm::vec3(0.0215f, 0.1745f, 0.0215f);
+        materialDiffuse = glm::vec3(0.07568f, 0.61424f, 0.07568f);
+        materialSpecular = glm::vec3(0.633f, 0.727811f, 0.633f);
+        materialShininess = 128.0f * 0.6f;
+    }
+    float last_button_x2 = ImGui::GetItemRectMax().x;
+    float next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("Jade", button_sz)) {
+        materialAmbient = glm::vec3(0.135f, 0.2225f, 0.1575f);
+        materialDiffuse = glm::vec3(0.54f, 0.89f, 0.63);
+        materialSpecular = glm::vec3(0.316228f, 0.316228f, 0.316228f);
+        materialShininess = 128.0f * 0.1f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("obsidian", button_sz)) {
+        materialAmbient = glm::vec3(0.05375f, 0.05f, 0.06625f);
+        materialDiffuse = glm::vec3(0.18275f, 0.17f, 0.22525f);
+        materialSpecular = glm::vec3(0.332741f, 0.328634f, 0.346435f);
+        materialShininess = 128.0f * 0.3f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("pearl", button_sz)) {
+        materialAmbient = glm::vec3(0.25f, 0.20725f, 0.20725f);
+        materialDiffuse = glm::vec3(1.0f, 0.829f, 0.829f);
+        materialSpecular = glm::vec3(0.296648f, 0.296648f, 0.296648f);
+        materialShininess = 128.0f * 0.088f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("ruby", button_sz)) {
+        materialAmbient = glm::vec3(0.1745f, 0.01175f, 0.01175f);
+        materialDiffuse = glm::vec3(0.61424f, 0.04136f, 0.04136f);
+        materialSpecular = glm::vec3(0.727811f, 0.626959f, 0.626959f);
+        materialShininess = 128.0f * 0.6f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("turquoise", button_sz)) {
+        materialAmbient = glm::vec3(0.1f, 0.18725f, 0.1745f);
+        materialDiffuse = glm::vec3(0.396f, 0.74151f, 0.69102f);
+        materialSpecular = glm::vec3(0.297254f, 0.30829f, 0.306678f);
+        materialShininess = 128.0f * 0.1f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("brass", button_sz)) {
+        materialAmbient = glm::vec3(0.329412f, 0.223529f, 0.027451f);
+        materialDiffuse = glm::vec3(0.780392f, 0.568627f, 0.113725f);
+        materialSpecular = glm::vec3(0.992157f, 0.941176f, 0.807843f);
+        materialShininess = 128.0f * 0.21794872f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("bronze", button_sz)) {
+        materialAmbient = glm::vec3(0.2125f, 0.1275f, 0.054f);
+        materialDiffuse = glm::vec3(0.714f, 0.4284f, 0.18144f);
+        materialSpecular = glm::vec3(0.393548f, 0.271906f, 0.166721f);
+        materialShininess = 128.0f * 0.2f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("chrome", button_sz)) {
+        materialAmbient = glm::vec3(0.25f, 0.25f, 0.25f);
+        materialDiffuse = glm::vec3(0.4f, 0.4f, 0.4f);
+        materialSpecular = glm::vec3(0.774597f, 0.774597f, 0.774597f);
+        materialShininess = 128.0f * 0.6f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("copper", button_sz)) {
+        materialAmbient = glm::vec3(0.19125f, 0.0735f, 0.0225f);
+        materialDiffuse = glm::vec3(0.7038f, 0.27048f, 0.0828f);
+        materialSpecular = glm::vec3(0.256777f, 0.137622f, 0.086014f);
+        materialShininess = 128.0f * 0.1f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("gold", button_sz)) {
+        materialAmbient = glm::vec3(0.24725f, 0.1995f, 0.0745f);
+        materialDiffuse = glm::vec3(0.75164f, 0.60648f, 0.22648f);
+        materialSpecular = glm::vec3(0.628281f, 0.555802f, 0.366065f);
+        materialShininess = 128.0f * 0.4f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("silver", button_sz)) {
+        materialAmbient = glm::vec3(0.19225f, 0.19225f, 0.19225f);
+        materialDiffuse = glm::vec3(0.50754f, 0.50754f, 0.50754f);
+        materialSpecular = glm::vec3(0.508273f, 0.508273f, 0.508273f);
+        materialShininess = 128.0f * 0.4f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("black plastic", button_sz)) {
+        materialAmbient = glm::vec3(0.0f, 0.0f, 0.0f);
+        materialDiffuse = glm::vec3(0.01f, 0.01f, 0.01f);
+        materialSpecular = glm::vec3(0.50f, 0.50f, 0.50f);
+        materialShininess = 128.0f * .25f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("cyan plastic", button_sz)) {
+        materialAmbient = glm::vec3(0.0f, 0.1f, 0.06f);
+        materialDiffuse = glm::vec3(0.0f, 0.50980392f, 0.50980392f);
+        materialSpecular = glm::vec3(0.50196078f, 0.50196078f, 0.50196078f);
+        materialShininess = 128.0f * .25f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("green plastic", button_sz)) {
+        materialAmbient = glm::vec3(0.0f, 0.0f, 0.0f);
+        materialDiffuse = glm::vec3(0.1f, 0.35f, 0.1f);
+        materialSpecular = glm::vec3(0.45f, 0.55f, 0.45f);
+        materialShininess = 128.0f * .25f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("red plastic", button_sz)) {
+        materialAmbient = glm::vec3(0.0f, 0.0f, 0.0f);
+        materialDiffuse = glm::vec3(0.5f, 0.0f, 0.0f);
+        materialSpecular = glm::vec3(0.7f, 0.6f, 0.6f);
+        materialShininess = 128.0f * .25f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("white plastic", button_sz)) {
+        materialAmbient = glm::vec3(0.0f, 0.0f, 0.0f);
+        materialDiffuse = glm::vec3(0.55f, 0.55f, 0.55f);
+        materialSpecular = glm::vec3(0.70f, 0.70f, 0.70f);
+        materialShininess = 128.0f * .25f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("yellow plastic", button_sz)) {
+        materialAmbient = glm::vec3(0.0f, 0.0f, 0.0f);
+        materialDiffuse = glm::vec3(0.5f, 0.5f, 0.0f);
+        materialSpecular = glm::vec3(0.60f, 0.60f, 0.50f);
+        materialShininess = 128.0f * .25f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("black rubber", button_sz)) {
+        materialAmbient = glm::vec3(0.02f, 0.02f, 0.02f);
+        materialDiffuse = glm::vec3(0.01f, 0.01f, 0.01f);
+        materialSpecular = glm::vec3(0.4f, 0.4f, 0.4f);
+        materialShininess = 128.0f * .078125f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("cyan rubber", button_sz)) {
+        materialAmbient = glm::vec3(0.0f, 0.05f, 0.05f);
+        materialDiffuse = glm::vec3(0.4f, 0.5f, 0.5f);
+        materialSpecular = glm::vec3(0.04f, 0.7f, 0.7f);
+        materialShininess = 128.0f * .078125f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("green rubber", button_sz)) {
+        materialAmbient = glm::vec3(0.0f, 0.05f, 0.0f);
+        materialDiffuse = glm::vec3(0.4f, 0.5f, 0.4f);
+        materialSpecular = glm::vec3(0.04f, 0.7f, 0.04f);
+        materialShininess = 128.0f * .078125f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("red rubber", button_sz)) {
+        materialAmbient = glm::vec3(0.05f, 0.0f, 0.0f);
+        materialDiffuse = glm::vec3(0.5f, 0.4f, 0.4f);
+        materialSpecular = glm::vec3(0.7f, 0.04f, 0.04f);
+        materialShininess = 128.0f * .078125f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("white rubber", button_sz)) {
+        materialAmbient = glm::vec3(0.05f, 0.05f, 0.05f);
+        materialDiffuse = glm::vec3(0.5f, 0.5f, 0.5f);
+        materialSpecular = glm::vec3(0.7f, 0.7f, 0.7f);
+        materialShininess = 128.0f * .078125f;
+    }
+    last_button_x2 = ImGui::GetItemRectMax().x;
+    next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
+    if (next_button_x2 < window_visible_x2)
+        ImGui::SameLine();
+
+    if (ImGui::Button("yellow rubber", button_sz)) {
+        materialAmbient = glm::vec3(0.05f, 0.05f, 0.0f);
+        materialDiffuse = glm::vec3(0.5f, 0.5f, 0.4f);
+        materialSpecular = glm::vec3(0.7f, 0.7f, 0.04f);
+        materialShininess = 128.0f * .078125f;
     }
 }
 
