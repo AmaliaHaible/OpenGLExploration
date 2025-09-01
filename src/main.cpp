@@ -54,6 +54,7 @@ float vertices[] = {-0.5f, -0.5f, -0.5f, 0.0f,  0.0f,  -1.0f, 0.5f,  -0.5f, -0.5
                     -0.5f, 0.5f,  -0.5f, 0.0f,  1.0f,  0.0f,  0.5f,  0.5f,  -0.5f, 0.0f,  1.0f,  0.0f,  0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.5f,  0.5f,
                     0.5f,  0.0f,  1.0f,  0.0f,  -0.5f, 0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  -0.5f, 0.5f,  -0.5f, 0.0f,  1.0f,  0.0f};
 
+// GLOBALS
 std::vector<glm::vec3> cubes;
 
 unsigned int SCR_WIDTH = 800;
@@ -64,21 +65,28 @@ GLuint VBO, cubeVAO;
 std::unique_ptr<Shader> mainShader;
 GLuint lightVAO;
 std::unique_ptr<Shader> lightcubeShader;
-glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
 Camera camera(glm::vec3(-1.0f, 2.0f, 10.0f));
 // Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
-float lastMouseX = SCR_WIDTH / 2.0, lastMouseY = SCR_HEIGHT / 2.0;
+float lastMouseX = SCR_WIDTH / 2.0f, lastMouseY = SCR_HEIGHT / 2.0f;
 
 std::mt19937 gen;
 
 // imgui settings
-float ambientStrength = 0.1;
-float specularStrength = 0.5;
 bool movingLight = true;
+glm::vec3 materialAmbient(1.0f, 0.5f, 0.31f);
+glm::vec3 materialDiffuse(1.0f, 1.0f, 0.31f);
+glm::vec3 materialSpecular(0.5f, 0.5f, 0.5f);
+float materialShininess = 32.0f;
+
+glm::vec3 lightBaseColor(1.0f, 1.0f, 1.0f);
+glm::vec3 lightPosition(1.2f, 1.0f, 2.0f);
+glm::vec3 lightAmbient = lightBaseColor * glm::vec3(0.5);
+glm::vec3 lightDiffuse = lightBaseColor * glm::vec3(0.1);
+glm::vec3 lightSpecular(1.0f, 1.0f, 1.0f);
 
 int main() {
     initRandom(123);
@@ -181,16 +189,19 @@ void draw(GLFWwindow *window) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     float time = glfwGetTime();
-    if (movingLight)
-        lightPos = glm::vec3(sinf(time), sinf(time), cosf(time));
     // be sure to activate shader when setting uniforms/drawing objects
     mainShader->use();
-    mainShader->setVec3("objectColor", 1.0f, 0.5f, 0.31f);
-    mainShader->setVec3("lightColor", 1.0f, 1.0f, 1.0f);
-    mainShader->setVec3("lightPos", lightPos);
     mainShader->setVec3("viewPos", camera.Position);
-    mainShader->setFloat("ambientStrength", ambientStrength);
-    mainShader->setFloat("specularStrength", specularStrength);
+    mainShader->setVec3("light.position", lightPosition);
+
+    mainShader->setVec3("light.ambient", lightAmbient);
+    mainShader->setVec3("light.diffuse", lightDiffuse);
+    mainShader->setVec3("light.specular", lightSpecular);
+
+    mainShader->setVec3("material.ambient", materialAmbient);
+    mainShader->setVec3("material.diffuse", materialDiffuse);
+    mainShader->setVec3("material.specular", materialSpecular);
+    mainShader->setFloat("material.shininess", materialShininess);
 
     // view/projection transformations
     glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
@@ -217,9 +228,10 @@ void draw(GLFWwindow *window) {
     lightcubeShader->setMat4("view", view);
     model = glm::mat4(1.0f);
     // model = glm::translate(model, lightPos);
-    model = glm::translate(model, lightPos);
+    model = glm::translate(model, lightPosition);
     model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
     lightcubeShader->setMat4("model", model);
+    lightcubeShader->setVec3("lightColor", lightBaseColor);
 
     glBindVertexArray(lightVAO);
     glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -231,9 +243,22 @@ void draw(GLFWwindow *window) {
 
 void drawImgui() {
     if (ImGui::CollapsingHeader("Settings")) {
-        ImGui::SliderFloat("ambientStrength", &ambientStrength, 0.0f, 2.0f);
-        ImGui::SliderFloat("specularStrength", &specularStrength, 0.0f, 200.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+        // ImGui::SliderFloat("ambientStrength", &ambientStrength, 0.0f, 2.0f);
+        // ImGui::SliderFloat("specularStrength", &specularStrength, 0.0f, 200.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
         ImGui::Checkbox("Move Light", &movingLight);
+        ImGui::SliderFloat3("lightPosition", &lightPosition.x, -5.0f, 5.0f);
+        if (ImGui::SliderFloat3("lightBaseColor", &lightBaseColor.x, 0.0f, 1.0f)) {
+            lightAmbient = lightBaseColor * glm::vec3(0.5);
+            lightDiffuse = lightBaseColor * glm::vec3(0.1);
+        };
+        ImGui::SliderFloat3("lightAmbient", &lightAmbient.x, 0.0f, 1.0f);
+        ImGui::SliderFloat3("lightDiffuse", &lightDiffuse.x, 0.0f, 1.0f);
+        ImGui::SliderFloat3("lightSpecular", &lightSpecular.x, 0.0f, 1.0f);
+
+        ImGui::SliderFloat3("materialAmbient", &materialAmbient.x, 0.0f, 1.0f);
+        ImGui::SliderFloat3("materialDiffuse", &materialDiffuse.x, 0.0f, 1.0f);
+        ImGui::SliderFloat3("materialSpecular", &materialSpecular.x, 0.0f, 1.0f);
+        ImGui::SliderFloat("materialShininess", &materialShininess, 0.0f, 256.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
     }
 }
 
